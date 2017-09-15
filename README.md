@@ -4,7 +4,7 @@ This repository has an initial setting to start assignment 1.
 Direction
 ---------
 * Go to __pintos__ directory.
-* Remove __src__ folder with sudo command __(password: cse421521)__
+* Remove __src__ directory with sudo command __(password: cse421521)__
 ```sh
 $ cd ~/pintos
 $ sudo rm -r src
