@@ -18,8 +18,21 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
+#define MAX_ARGS 10
+#define FILE_NAME_MAX 200
+#define ARG_LEN_MAX 20
+
+#define SIZE 4
+
+typedef struct args {
+	char file_name[FILE_NAME_MAX];
+	int argc;
+ 	char argv[ARG_LEN_MAX][MAX_ARGS];
+} Arguments_t;
+
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (const char *cmdline, void (**eip) (void), void **esp,
+	int argc, char *argv[]);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -38,6 +51,10 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+	char *ptr_save;
+
+	file_name = strtok_r(file_name, " ", &ptr_save);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -54,17 +71,32 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
+	char *pivot, *token;
+	int argc = 0;
+	char *argv[MAX_ARGS];
+	
+	for (token = strtok_r (file_name, " ", &pivot); token != NULL;
+	token = strtok_r (NULL, " ", &pivot)) {
+		argv[argc] = token;
+
+		argc++;
+	}
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp, argc, argv);
+
+	hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+	/* Put args on stack */
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -86,9 +118,12 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+	while (true)
+		;
+
+	return -1;
 }
 
 /* Free the current process's resources. */
@@ -195,7 +230,7 @@ struct Elf32_Phdr
 #define PF_W 2          /* Writable. */
 #define PF_R 4          /* Readable. */
 
-static bool setup_stack (void **esp);
+static bool setup_stack (void **esp, int argc, char *argv[]);
 static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
@@ -206,7 +241,8 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (const char *file_name, void (**eip) (void), void **esp, int argc,
+char *argv[]) 
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -302,7 +338,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp, argc, argv))
     goto done;
 
   /* Start address. */
@@ -427,7 +463,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the top of
    user virtual memory. */
 static bool
-setup_stack (void **esp) 
+setup_stack (void **esp, int argc, char *argv[]) 
 {
   uint8_t *kpage;
   bool success = false;
@@ -437,10 +473,51 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
-      else
+        *esp = PHYS_BASE - 12;
+      else {
         palloc_free_page (kpage);
+
+		return success;
+	  }
     }
+
+	int i = 0;
+	int *esp_addresses[100];
+
+	/* Push arg values */
+	for (i = 0; i < argc ; i++) {
+		*esp -= strlen(argv[i]) + 1;
+
+		esp_addresses[i] = (int) *esp;
+
+		memcpy(*esp, argv[i], strlen(argv[i]) + 1);		
+	}
+
+	/* Word allign */
+	*esp = (int)*esp & 0xfffffffc;
+
+	/* Sentinel separating the arg values with arg addresses */
+	*esp -= SIZE;
+	*(uint32_t *) *esp = 0;
+
+	/* Push addresses */
+	for (i = argc-1; i >= 0 ; i--) {
+		*esp -= SIZE;
+
+		*(int *) *esp = esp_addresses[i];
+	}
+
+	/* Argv */
+	*esp -= 4;
+	*(int *) *esp = (int) *esp + SIZE;
+
+	/* Push argc */
+	*esp -= SIZE;
+	*(int *) *esp = argc;
+
+	*esp -= SIZE;
+	*(int *) *esp = 0;
+
   return success;
 }
 
