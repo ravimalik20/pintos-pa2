@@ -120,8 +120,13 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-	while (true)
-		;
+	int i = 90000;
+	int count = 0;
+
+	while (i-- > 0)
+		count++;
+
+	ASSERT (count != 0);
 
 	return -1;
 }

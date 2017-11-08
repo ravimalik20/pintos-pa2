@@ -3,3 +3,6 @@ cscope.out
 TAGS
 tags
 build/
+*~
+*.o
+*.a
