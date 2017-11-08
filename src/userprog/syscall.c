@@ -8,13 +8,21 @@
 #include "devices/shutdown.h"
 #include "helper.h"
 
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "threads/palloc.h"
+
 #include "syscalls/sys_write.h"
 #include "syscalls/sys_exec.h"
+#include "syscalls/sys_create.h"
+#include "syscalls/sys_remove.h"
 
 #define SUCCESS true
 #define FAILURE false
 
 #define ERR_MEM_INVALID -1
+
+#define SIZE 4
 
 uint32_t sys_exec(const char *cmdline);
 
@@ -45,15 +53,21 @@ syscall_handler (struct intr_frame *f)
 	else if (scall_num == SYS_EXIT) {
 		int status = 0;
 
-		user_mem(f->esp + 4, &status, sizeof(status));
+		user_mem(f->esp + SIZE, &status, sizeof(status));
 
 		sys_exit(status);
 	}
 	else if (scall_num == SYS_WRITE) {
 		SCALL_WRITE_F(f);
 	}
-	else if (scall_num = SYS_EXEC) {
+	else if (scall_num == SYS_EXEC) {
 		SCALL_EXEC_F(f);
+	}
+	else if (scall_num == SYS_CREATE) {
+		SCALL_CREATE_F(f);
+	}
+	else if (scall_num == SYS_REMOVE) {
+		SCALL_REMOVE_F(f);
 	}
 
   //thread_exit ();
