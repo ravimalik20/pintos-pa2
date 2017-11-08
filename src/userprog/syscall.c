@@ -9,13 +9,14 @@
 #include "helper.h"
 
 #include "syscalls/sys_write.h"
+#include "syscalls/sys_exec.h"
 
 #define SUCCESS true
 #define FAILURE false
 
 #define ERR_MEM_INVALID -1
 
-uint32_t sys_exec(char *cmdline);
+uint32_t sys_exec(const char *cmdline);
 
 static void sys_exit(int code);
 static void syscall_handler (struct intr_frame *);
@@ -32,7 +33,9 @@ syscall_handler (struct intr_frame *f)
 	/* Reading data from user: syscall number */
 	int scall_num = * (int *)f->esp;
 
+	#ifdef debug
 	printf("__DEBUG__ : Syscall number is: %d\n", scall_num);
+	#endif
 
 	/* Process system call */
 
@@ -49,12 +52,11 @@ syscall_handler (struct intr_frame *f)
 	else if (scall_num == SYS_WRITE) {
 		SCALL_WRITE_F(f);
 	}
-	else {
-		printf ("__ERROR__ : %d syscall is not yet implemented.\n",
-			scall_num);
+	else if (scall_num = SYS_EXEC) {
+		SCALL_EXEC_F(f);
 	}
 
-  thread_exit ();
+  //thread_exit ();
 }
 
 static void sys_exit(int code)

@@ -41,25 +41,29 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp,
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
-  tid_t tid;
+	char *fn_copy, *fname;
+	tid_t tid;
 
-  /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
-  fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+	/* Make a copy of FILE_NAME.
+	 Otherwise there's a race between the caller and load(). */
+	fn_copy = palloc_get_page (0);
+	if (fn_copy == NULL)
+		return TID_ERROR;
+	strlcpy (fn_copy, file_name, PGSIZE);
+
+	fname = palloc_get_page (0);
+	if (fname == NULL)
+		return TID_ERROR;
+	strlcpy (fname, fn_copy, PGSIZE);
 
 	char *ptr_save;
+	fname = strtok_r(fname, " ", &ptr_save);
 
-	file_name = strtok_r(file_name, " ", &ptr_save);
-
-  /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
-  return tid;
+	/* Create a new thread to execute FILE_NAME. */
+	tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
+	if (tid == TID_ERROR)
+		palloc_free_page (fn_copy); 
+	return tid;
 }
 
 /* A thread function that loads a user process and starts it
@@ -89,7 +93,9 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp, argc, argv);
 
+	#ifdef debug
 	hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+	#endif
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -120,7 +126,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-	int i = 90000;
+	int64_t i = 9000;
 	int count = 0;
 
 	while (i-- > 0)
@@ -128,7 +134,6 @@ process_wait (tid_t child_tid)
 
 	ASSERT (count != 0);
 
-	return -1;
 }
 
 /* Free the current process's resources. */
