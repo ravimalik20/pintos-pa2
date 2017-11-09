@@ -1,6 +1,8 @@
 #ifndef __SYS_WRITE_H__
 #define __SYS_WRITE_H__
 
+extern struct lock lock_fs;
+
 #define SCALL_WRITE_F(f) int fd, return_code;\
 const void *buffer;\
 unsigned size;\
@@ -23,7 +25,12 @@ bool scall_write(int fd, const void *buffer, unsigned size, int* ret)
 	}
 
 	if (fd == 1) {
+		lock_acquire(&lock_fs);
+
 		putbuf (buffer, size);
+
+		lock_release(&lock_fs);
+
 		*ret = size;
 
 		return true;

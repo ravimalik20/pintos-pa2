@@ -31,4 +31,27 @@ int get_user (const uint8_t *uaddr)
   return result;
 }
 
+bool check_user_address(uint8_t *add)
+{
+	if (get_user((uint8_t*) add) == -1)
+		thread_exit();
+}
+
+struct fd_t *fdnum_to_fd (int num)
+{
+	struct thread *th = thread_current();
+
+	struct list fds = th->fds;
+
+	for (struct list_elem* iter = list_begin(&fds); iter != list_end(&fds);
+	iter = list_next(iter)) {
+		struct fd_t *fd = list_entry(iter, struct fd_t, elem);
+
+		if (fd->id == num)
+			return fd;
+		else
+			return NULL;
+	}
+}
+
 #endif

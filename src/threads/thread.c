@@ -204,6 +204,10 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
+	#ifdef USERPROG
+	list_init(&(t->fds));
+	#endif
+
   intr_set_level (old_level);
 
   /* Add to run queue. */
@@ -469,10 +473,6 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
-	#ifdef USERPROG
-	list_init(&(t->fds));
-	#endif
 
   list_push_back (&all_list, &t->allelem);
 }

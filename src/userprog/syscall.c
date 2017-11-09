@@ -37,6 +37,8 @@ struct lock lock_fs;
 void
 syscall_init (void) 
 {
+	lock_init (&lock_fs);
+
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -76,6 +78,25 @@ syscall_handler (struct intr_frame *f)
 	}
 	else if (scall_num == SYS_OPEN) {
 		SCALL_OPEN_F(f);
+	}
+	else if (scall_num == SYS_CLOSE) {
+		int fd_num = user_mem(f->esp + 4, &fd_num, sizeof(fd_num));
+
+		if (fd_num == -1)
+			thread_exit();
+
+		//check_user_address((uint8_t *) fd_num);
+
+		struct fd_t *fd = fdnum_to_fd(fd_num);
+		if (!fd)
+			thread_exit();
+
+		if (!fd->file)
+			thread_exit();
+
+		file_close(fd->file);
+		list_remove(&(fd->elem));
+		palloc_free_page(fd);
 	}
 
   //thread_exit ();
