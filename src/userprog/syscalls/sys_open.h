@@ -28,15 +28,17 @@ static void sys_open_f(struct intr_frame *f)
 	struct fd_t *fd;
 
 	fl = filesys_open(file_name);
-	if (!fl)
-		return false;
+	if (!fl) {
+		f->eax = -1;
+	}
+	else {
+		fd->file = fl;
 
-	fd->file = fl;
+		struct thread *th = thread_current();
+		struct list lst = th->fds;
 
-	struct thread *th = thread_current();
-	struct list lst = th->fds;
+		put_in_list(fd, lst);
 
-	put_in_list(fd, lst);
-
-	f->eax = fd->id;
+		f->eax = fd->id;
+	}
 }

@@ -18,7 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-#define MAX_ARGS 10
+#define MAX_ARGS 256
 #define FILE_NAME_MAX 200
 #define ARG_LEN_MAX 20
 
