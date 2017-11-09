@@ -25,7 +25,7 @@ static void sys_open_f(struct intr_frame *f)
 		thread_exit();
 
 	struct file *fl;
-	struct fd_t *fd;
+	struct fd_t *fd = palloc_get_page(0);
 
 	fl = filesys_open(file_name);
 	if (!fl) {
