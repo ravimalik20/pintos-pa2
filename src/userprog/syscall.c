@@ -7,6 +7,8 @@
 #include "userprog/process.h"
 #include "devices/shutdown.h"
 #include "helper.h"
+#include "threads/synch.h"
+#include "lib/kernel/list.h"
 
 #include "filesys/filesys.h"
 #include "filesys/file.h"
@@ -16,6 +18,7 @@
 #include "syscalls/sys_exec.h"
 #include "syscalls/sys_create.h"
 #include "syscalls/sys_remove.h"
+#include "syscalls/sys_open.h"
 
 #define SUCCESS true
 #define FAILURE false
@@ -28,6 +31,8 @@ uint32_t sys_exec(const char *cmdline);
 
 static void sys_exit(int code);
 static void syscall_handler (struct intr_frame *);
+
+struct lock lock_fs;
 
 void
 syscall_init (void) 
@@ -68,6 +73,9 @@ syscall_handler (struct intr_frame *f)
 	}
 	else if (scall_num == SYS_REMOVE) {
 		SCALL_REMOVE_F(f);
+	}
+	else if (scall_num == SYS_OPEN) {
+		SCALL_OPEN_F(f);
 	}
 
   //thread_exit ();

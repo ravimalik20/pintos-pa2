@@ -126,7 +126,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-	int64_t i = 9000;
+	int64_t i = 9999999;
 	int count = 0;
 
 	while (i-- > 0)

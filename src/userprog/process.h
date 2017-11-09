@@ -3,6 +3,12 @@
 
 #include "threads/thread.h"
 
+struct fd_t {
+	int id;
+	struct list_elem elem;
+	struct file *file;
+};
+
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
