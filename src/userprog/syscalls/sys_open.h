@@ -1,7 +1,5 @@
 #define SCALL_OPEN_F(f) sys_open_f((f))
 
-extern struct lock lock_fs;
-
 static void put_in_list(struct fd_t *fd, struct list *lst)
 {
 	int fd_id;
@@ -10,10 +8,7 @@ static void put_in_list(struct fd_t *fd, struct list *lst)
 		fd_id = 3;
 	}
 	else {
-		struct list_elem *el = list_back(lst);
-		struct fd_t *fd_temp = list_entry(el, struct fd_t, elem);
-
-		fd_id = fd_temp->id + 1;
+		fd_id = (list_entry(list_back(lst), struct fd_t, elem)->id) + 1;
 	}
 
 	fd->id = fd_id;
@@ -23,17 +18,16 @@ static void sys_open_f(struct intr_frame *f)
 {
 	char *file_name;
 
-	if (!user_mem(f->esp + 4, &file_name, sizeof(file_name)))
+	if (!user_mem(f->esp + 4, &file_name, sizeof(file_name))) {
 		thread_exit();
+		f->eax = -1;
+	}
 
 	struct file *fl;
 	struct fd_t *fd = palloc_get_page(0);
 
-	/* Handling file does not exist */
-	/*if (get_user((uint8_t *) file_name) == -1)
-		thread_exit();*/
-
-	lock_acquire(&lock_fs);
+	if (get_user((uint8_t *) file_name) == -1)
+		thread_exit(); f->eax = -1;
 
 	fl = filesys_open(file_name);
 	if (!fl) {
@@ -42,8 +36,7 @@ static void sys_open_f(struct intr_frame *f)
 	else {
 		fd->file = fl;
 
-		struct thread *th = thread_current();
-		struct list *lst = &(th->fds);
+		struct list *lst = &thread_current()->fds;
 
 		put_in_list(fd, lst);
 
@@ -51,6 +44,4 @@ static void sys_open_f(struct intr_frame *f)
 
 		f->eax = fd->id;
 	}
-
-	lock_release(&lock_fs);
 }

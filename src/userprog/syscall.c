@@ -32,6 +32,8 @@ uint32_t sys_exec(const char *cmdline);
 static void sys_exit(int code);
 static void syscall_handler (struct intr_frame *);
 
+int sys_open(const char* file);
+
 struct lock lock_fs;
 
 void
