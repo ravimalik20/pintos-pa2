@@ -81,7 +81,11 @@ syscall_handler (struct intr_frame *f)
 		if (!user_mem((f)->esp + SIZE*2, &size, sizeof(file_name)))
 			thread_exit();
 
+		lock_acquire(&lock_fs);
+
 		f->eax = filesys_create(file_name, size);
+
+		lock_release(&lock_fs);
 	}
 	else if (scall_num == SYS_REMOVE) {
 		SCALL_REMOVE_F(f);
@@ -104,7 +108,12 @@ syscall_handler (struct intr_frame *f)
 		if (!fd->file)
 			thread_exit();
 
+		lock_acquire(&lock_fs);
+
 		file_close(fd->file);
+
+		lock_release(&lock_fs);
+
 		list_remove(&(fd->elem));
 		palloc_free_page(fd);
 	}

@@ -1,3 +1,5 @@
+extern struct lock lock_fs;
+
 #define SCALL_OPEN_F(f) sys_open_f((f))
 
 static void put_in_list(struct fd_t *fd, struct list *lst)
@@ -29,7 +31,12 @@ static void sys_open_f(struct intr_frame *f)
 	if (get_user((uint8_t *) file_name) == -1)
 		thread_exit(); f->eax = -1;
 
+	lock_acquire(&lock_fs);
+
 	fl = filesys_open(file_name);
+
+	lock_release(&lock_fs);
+
 	if (!fl) {
 		f->eax = -1;
 	}

@@ -47,7 +47,11 @@ bool scall_write(int fd, const void *buffer, unsigned size)
 		return -1;
 	}
 
+	lock_acquire(&lock_fs);
+
 	file_write(fd_obj->file, buffer, size);
+
+	lock_acquire(&lock_fs);
 
 	return size;
 }

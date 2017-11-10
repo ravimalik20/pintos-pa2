@@ -1,3 +1,5 @@
+extern struct lock lock_fs;
+
 #define SCALL_EXEC_F(f) void * input;\
 if (!user_mem((f)->esp + SIZE, &input, sizeof(input)))\
 	thread_exit();\

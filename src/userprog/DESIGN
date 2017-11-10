@@ -1,0 +1,256 @@
+		     +--------------------------+
+       	     |			CS 140			|
+		     | PROJECT 2: USER PROGRAMS	|
+		     | 	   DESIGN DOCUMENT     	|
+		     +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Manasi Samir Tamboli 	<manasisa@buffalo.edu>
+Ravi Malik 				<ravimali@buffalo.edu>
+Christopher Golinski 	<cmg43@buffalo.edu>
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+			   ARGUMENT PASSING
+			   ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+/* Typedef of a struct, used to pass arguments to a new process */
+
+typedef struct args {
+  void *args[MAX_ARGS];
+} Arguments_t;
+
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+The process of splitting the string to derive arguments and placing them on the
+stack is done in the function start_process()
+
+1. Arguments are derived from the string by spliting them using 'white spaces'
+as the delimiter.
+2. Fill up the Arguments_t structure with all the arguments.
+3. Arguments placed on the stack, in reverse order, and as described in The
+Pintos Guide: section 3.5.1, by reading the Arguments_t structure
+
+Arguments are placed in right order by putting them in reverse order on the
+stack. This is achieved by reading the string in reverse order (saves
+computation).
+
+To avoid stack-overflow, we check that the stack memory won't overflow before
+placing the new stack entry.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+The purpose of strtok_r() is to break the given string into tokens, separated by
+delimiters provided.
+
+The reason strtok_r() is implemented, insted of strtok() is that we can provide
+the placeholder (save_ptr), where we want to place the tokens, via. their
+address.
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+1. To do input validations, namely to check if the given commands exist.
+2. Reduce CPU cycles inside the kernel.
+
+			     SYSTEM CALLS
+			     ============
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+typedef struct child_thread_data 
+{
+  tid_t id;
+  int status;
+  struct list_elem elem_wait_list;
+} Child_thread_data_t;
+
+
+In 'struct thread'
+
+{
+	#ifdef USERPROG
+
+	tid_t parent_id;                    
+
+	int load_status_child;
+
+	/* Used to wait while the program is loaded */
+	struct lock lock_child;
+	struct condition cond_child;
+
+	/* A list of Child_thread_data_t */
+	struct list thread_children;
+
+	#endif
+
+}
+
+typedef struct fd {
+  int descriptor;
+  struct file *file;
+  struct list_elem elem;
+} Fd_t;
+
+
+/* To have exclusive access of file system by threads */
+struct lock lock_file_sys;
+
+>> B2: Describe how file descriptors are associated with open files.
+>> Are file descriptors unique within the entire OS or just within a
+>> single process?
+
+There is a unique file decriptior for every open file, associated to the process
+that the file is assigned to.
+
+---- ALGORITHMS ----
+
+>> B3: Describe your code for reading and writing user data from the
+>> kernel.
+
+Following are the steps taken while reading user data from the kernel:
+
+1. Make sure pointers are valid
+2. Acquire file system lock : lock_file_sys
+3. Find the file that was opened according to file descriptor
+4. Read file using file_read()
+5. Release the lock
+
+Following are the steps taken to write user data
+
+1. Make sure pointers are valid
+2. Acquire file system lock : lock_file_sys
+3. Find the file that was opened using file descriptor
+4. Write using file_write()
+5. Release the lock
+
+>> B4: Suppose a system call causes a full page (4,096 bytes) of data
+>> to be copied from user space into the kernel.  What is the least
+>> and the greatest possible number of inspections of the page table
+>> (e.g. calls to pagedir_get_page()) that might result?  What about
+>> for a system call that only copies 2 bytes of data?  Is there room
+>> for improvement in these numbers, and how much?
+
+>> B5: Briefly describe your implementation of the "wait" system call
+>> and how it interacts with process termination.
+
+We wait for the thread to die using a monitor defined inside the thread data
+structure. Child thread is responsible to wake up the parent thread on
+completion. After waking up, parent will look for still open child threads and
+will terminate after all the child threads are done.
+
+>> B6: Any access to user program memory at a user-specified address
+>> can fail due to a bad pointer value.  Such accesses must cause the
+>> process to be terminated.  System calls are fraught with such
+>> accesses, e.g. a "write" system call requires reading the system
+>> call number from the user stack, then each of the call's three
+>> arguments, then an arbitrary amount of user memory, and any of
+>> these can fail at any point.  This poses a design and
+>> error-handling problem: how do you best avoid obscuring the primary
+>> function of code in a morass of error-handling?  Furthermore, when
+>> an error is detected, how do you ensure that all temporarily
+>> allocated resources (locks, buffers, etc.) are freed?  In a few
+>> paragraphs, describe the strategy or strategies you adopted for
+>> managing these issues.  Give an example.
+
+---- SYNCHRONIZATION ----
+
+>> B7: The "exec" system call returns -1 if loading the new executable
+>> fails, so it cannot return before the new executable has completed
+>> loading.  How does your code ensure this?  How is the load
+>> success/failure status passed back to the thread that calls "exec"?
+
+It is achieved by a monitor defined inside the thread data structure:
+
+	struct lock lock_child;
+	struct condition cond_child;
+
+This is used to ensure that the thread isn't woken up before the said program
+is loaded.
+
+>> B8: Consider parent process P with child process C.  How do you
+>> ensure proper synchronization and avoid race conditions when P
+>> calls wait(C) before C exits?  After C exits?  How do you ensure
+>> that all resources are freed in each case?  How about when P
+>> terminates without waiting, before C exits?  After C exits?  Are
+>> there any special cases?
+
+To ensure proper synchromization to avoid race conditions the child process 
+will use a monitor for the resources it requires and when P calls wait(C) it
+will wait for the exit from C before it waits.  After C exits it can just wait
+as the tied up resources will have been relinquished.  In any case where C is
+terminated without giving P an exit P can just check for C when it calls wait
+and if C is already gone can continue as the resources will have been relinquished.
+---- RATIONALE ----
+
+>> B9: Why did you choose to implement access to user memory from the
+>> kernel in the way that you did?
+
+We choose this method because it saves computation time and reduces time spent
+inside the kernel. CPU cycles are supposed to be spent running user programs,
+for as much time as possible.
+
+>> B10: What advantages or disadvantages can you see to your design
+>> for file descriptors?
+
+Our file descriptor design is simple to implement and can save computations
+inside the kernel space. Kernel also knows about all the open files which
+enhances flexibility, but also leaves some scope for errors, namely when buggy
+code starts interefering with these open files.
+
+>> B11: The default tid_t to pid_t mapping is the identity mapping.
+>> If you changed it, what advantages are there to your approach?
+
+No change was made.
+
+			   SURVEY QUESTIONS
+			   ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
