@@ -69,6 +69,39 @@ syscall_handler (struct intr_frame *f)
 	else if (scall_num == SYS_WRITE) {
 		SCALL_WRITE_F(f);
 	}
+	else if (scall_num == SYS_READ) {
+		int fd;
+		void *buffer;
+		unsigned size;
+		uint32_t i;
+		struct fd_t *fd_obj; 
+
+		if(user_mem(f->esp + 4, &fd, 4))
+			thread_exit();
+		if(user_mem(f->esp + 8, &buffer, 4))
+			thread_exit();
+		if(user_mem(f->esp + 12, &size, 4))
+			thread_exit();
+
+		if (fd == 0) {
+			for (i = 0 ; i < size ; i++) {
+				((uint8_t *)buffer)[i] = input_getc();
+			}
+
+			f->eax = size;
+		}
+		else {
+			fd_obj = fdnum_to_fd(fd);
+
+			if (!fd_obj)
+				f->eax = -1;
+			else if (!fd_obj->file)
+				f->eax = -1;
+			else {
+				f->eax = file_read(fd_obj->file, buffer, size);
+			}
+		}
+	}
 	else if (scall_num == SYS_EXEC) {
 		SCALL_EXEC_F(f);
 	}
@@ -102,7 +135,15 @@ syscall_handler (struct intr_frame *f)
 
 		fd_obj = fdnum_to_fd(fd);
 
-		f->eax = file_length(fd_obj->file);
+		if (!fd_obj) {
+			f->eax = -1; thread_exit();
+		}
+		else if (!fd_obj->file) {
+			f->eax = -1; thread_exit();
+		}
+		else {
+			f->eax = file_length(fd_obj->file);
+		}
 	}
 	else if (scall_num == SYS_CLOSE) {
 		int fd_num = user_mem(f->esp + 4, &fd_num, sizeof(fd_num));
@@ -113,11 +154,13 @@ syscall_handler (struct intr_frame *f)
 		check_user_address((uint8_t *) fd_num);
 
 		struct fd_t *fd = fdnum_to_fd(fd_num);
-		if (!fd)
-			thread_exit();
+		if (!fd) {
+			f->eax = -1; thread_exit();
+		}
 
-		if (!fd->file)
-			thread_exit();
+		if (!fd->file) {
+			f->eax = -1; thread_exit();
+		}
 
 		lock_acquire(&lock_fs);
 

@@ -41,10 +41,8 @@ struct fd_t *fdnum_to_fd (int num)
 {
 	struct thread *th = thread_current();
 
-	struct list fds = th->fds;
-
-	if (!list_empty(&fds)) {
-		for (struct list_elem* iter = list_begin(&fds); iter != list_end(&fds);
+	if (!list_empty(&th->fds)) {
+		for (struct list_elem* iter = list_begin(&th->fds); iter != list_end(&th->fds);
 		iter = list_next(iter)) {
 			struct fd_t *fd = list_entry(iter, struct fd_t, elem);
 

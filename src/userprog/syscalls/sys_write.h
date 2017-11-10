@@ -3,7 +3,7 @@
 
 extern struct lock lock_fs;
 
-#define SCALL_WRITE_F(f) int fd, return_code;\
+#define SCALL_WRITE_F(f) int fd;\
 const void *buffer;\
 unsigned size;\
 \
