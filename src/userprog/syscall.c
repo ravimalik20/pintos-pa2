@@ -93,13 +93,24 @@ syscall_handler (struct intr_frame *f)
 	else if (scall_num == SYS_OPEN) {
 		SCALL_OPEN_F(f);
 	}
+	else if (scall_num == SYS_FILESIZE) {
+		int fd;
+		struct fd_t *fd_obj;
+
+		if (!user_mem(f->esp + 4, &fd, sizeof(&fd)))
+			thread_exit();
+
+		fd_obj = fdnum_to_fd(fd);
+
+		f->eax = file_length(fd_obj->file);
+	}
 	else if (scall_num == SYS_CLOSE) {
 		int fd_num = user_mem(f->esp + 4, &fd_num, sizeof(fd_num));
 
 		if (fd_num == -1)
 			thread_exit();
 
-		//check_user_address((uint8_t *) fd_num);
+		check_user_address((uint8_t *) fd_num);
 
 		struct fd_t *fd = fdnum_to_fd(fd_num);
 		if (!fd)
@@ -116,6 +127,12 @@ syscall_handler (struct intr_frame *f)
 
 		list_remove(&(fd->elem));
 		palloc_free_page(fd);
+	}
+	else if (scall_num == SYS_WAIT) {
+		uint32_t pid;
+		user_mem(f->esp + 4, &pid, sizeof(pid));
+
+		f->eax = process_wait(pid);
 	}
 
   //thread_exit ();
