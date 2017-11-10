@@ -73,7 +73,15 @@ syscall_handler (struct intr_frame *f)
 		SCALL_EXEC_F(f);
 	}
 	else if (scall_num == SYS_CREATE) {
-		SCALL_CREATE_F(f);
+		char *file_name;
+		unsigned int size;
+
+		if (!user_mem((f)->esp + SIZE, &file_name, sizeof(file_name)))
+			thread_exit();
+		if (!user_mem((f)->esp + SIZE*2, &size, sizeof(file_name)))
+			thread_exit();
+
+		f->eax = filesys_create(file_name, size);
 	}
 	else if (scall_num == SYS_REMOVE) {
 		SCALL_REMOVE_F(f);

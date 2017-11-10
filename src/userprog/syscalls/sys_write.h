@@ -13,15 +13,16 @@ if(user_mem((f)->esp + 8, &buffer, 4) == false)\
 	sys_exit(-1);\
 if(user_mem((f)->esp + 12, &size, 4) == false)\
 	sys_exit(-1);\
-if(!scall_write(fd, buffer, size, &return_code))\
-	thread_exit();(f)->eax = (uint32_t) return_code;\
+int code = scall_write(fd, buffer, size);\
+if(code <= 0)\
+	sys_exit(-1);(f)->eax = (uint32_t) code;\
 
-bool scall_write(int fd, const void *buffer, unsigned size, int* ret)
+bool scall_write(int fd, const void *buffer, unsigned size)
 {
 	if (!(buffer < PHYS_BASE)) {
 		thread_exit();
 
-		return false;
+		return -1;
 	}
 
 	if (fd == 1) {
@@ -31,12 +32,24 @@ bool scall_write(int fd, const void *buffer, unsigned size, int* ret)
 
 		lock_release(&lock_fs);
 
-		*ret = size;
-
-		return true;
+		return size;
 	}
 
-	return true;
+	if (fd <= 0)
+		return -1;
+
+	struct fd_t *fd_obj = fdnum_to_fd(fd);
+	if (!fd_obj) {
+		return -1;
+	}
+
+	if (!fd_obj->file) {
+		return -1;
+	}
+
+	file_write(fd_obj->file, buffer, size);
+
+	return size;
 }
 
 #endif

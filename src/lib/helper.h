@@ -43,15 +43,17 @@ struct fd_t *fdnum_to_fd (int num)
 
 	struct list fds = th->fds;
 
-	for (struct list_elem* iter = list_begin(&fds); iter != list_end(&fds);
-	iter = list_next(iter)) {
-		struct fd_t *fd = list_entry(iter, struct fd_t, elem);
+	if (!list_empty(&fds)) {
+		for (struct list_elem* iter = list_begin(&fds); iter != list_end(&fds);
+		iter = list_next(iter)) {
+			struct fd_t *fd = list_entry(iter, struct fd_t, elem);
 
-		if (fd->id == num)
-			return fd;
-		else
-			return NULL;
+			if (fd->id == num)
+				return fd;
+		}
 	}
+
+	return NULL;
 }
 
 #endif
